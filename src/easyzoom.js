@@ -32,7 +32,7 @@
         this.$target = $(target);
         this.opts = $.extend({}, defaults, options);
 
-        if ( this.isOpen === undefined ) {
+        if (this.isOpen === undefined) {
             this._init();
         }
 
@@ -43,20 +43,27 @@
      * Init
      * @private
      */
-    EasyZoom.prototype._init = function() {
+    EasyZoom.prototype._init = function () {
         var self = this;
 
-        this.$link   = this.$target.find('a');
-        this.$image  = this.$target.find('img');
+        this.$link = this.$target.find('a');
+        this.$image = this.$target.find('img');
 
         this.$flyout = $('<div class="easyzoom-flyout" />');
         this.$notice = $('<div class="easyzoom-notice" />');
 
         this.$target
-            .on('mouseenter.easyzoom touchstart.easyzoom', function(e) {
-                if ( ! e.originalEvent.touches || e.originalEvent.touches.length === 1) {
+            .hammer().on("doubletap.easyzoom", function (e) {
+                if (Modernizr.touch) {
                     e.preventDefault();
                     self.show(e);
+                }
+            })
+            .on('click.easyzoom', function(e) {
+                if (!Modernizr.touch && !self.isOpen) {
+                    e.preventDefault();
+                    self.show(e);
+                    self.justOpened = true;
                 }
             })
             .on('mousemove.easyzoom touchmove.easyzoom', function(e) {
@@ -65,14 +72,21 @@
                     self._move(e);
                 }
             })
-            .on('mouseleave.easyzoom touchend.easyzoom', function() {
-                if (self.isOpen) {
+            .on('click.easyzoom', function(e) {
+                if (!Modernizr.touch && self.isOpen && !self.justOpened) {
+                    e.preventDefault();
+                    self.hide();
+                }
+                self.justOpened = false;
+            })
+            .on('touchend.easyzoom', function () {
+                if (Modernizr.touch && self.isOpen) {
                     self.hide();
                 }
             });
 
         if (this.opts.preventClicks) {
-            this.$target.on('click.easyzoom', 'a', function(e) {
+            this.$target.on('click.easyzoom', 'a', function (e) {
                 e.preventDefault();
             });
         }
@@ -82,12 +96,12 @@
      * Show
      * @param {MouseEvent|TouchEvent} e
      */
-    EasyZoom.prototype.show = function(e) {
+    EasyZoom.prototype.show = function (e) {
         var w1, h1, w2, h2;
         var self = this;
 
-        if (! this.isReady) {
-            this._load(this.$link.attr('href'), function() {
+        if (!this.isReady) {
+            this._load(this.$link.attr('href'), function () {
                 self.show(e);
             });
 
@@ -108,14 +122,16 @@
         rw = dw / w1;
         rh = dh / h1;
 
+        //initial position of the zooom image - important for smaller mobile screens
+        this.$zoom.css({
+            top: ((this.$zoom.height() / 2) + (h1 / 2)) * -1,
+            left: ((this.$zoom.width() / 2) + (w1 / 2)) * -1
+        });
+
         this.isOpen = true;
 
         if (this.opts.onShow) {
             this.opts.onShow.call(this);
-        }
-
-        if (e) {
-            this._move(e);
         }
     };
 
@@ -125,7 +141,7 @@
      * @param {String} href
      * @param {Function} callback
      */
-    EasyZoom.prototype._load = function(href, callback) {
+    EasyZoom.prototype._load = function (href, callback) {
         var self = this;
         var zoom = new Image();
 
@@ -133,12 +149,12 @@
 
         this.$zoom = $(zoom);
 
-        zoom.onerror = function() {
+        zoom.onerror = function () {
             self.$notice.text(self.opts.errorNotice);
             self.$target.removeClass('is-loading').addClass('is-error');
         };
 
-        zoom.onload = function() {
+        zoom.onload = function () {
 
             // IE may fire a load event even on error so check the image has dimensions
             if (zoom.width === 0) {
@@ -163,7 +179,7 @@
      * @private
      * @param {Event} e
      */
-    EasyZoom.prototype._move = function(e) {
+    EasyZoom.prototype._move = function (e) {
 
         if (e.type.indexOf('touch') === 0) {
             var touchlist = e.touches || e.originalEvent.touches;
@@ -175,32 +191,22 @@
             ly = e.pageY || ly;
         }
 
-        var offset  = this.$target.offset();
+        var offset = this.$target.offset();
         var pt = ly - offset.top;
         var pl = lx - offset.left;
         var xt = pt * rh;
         var xl = pl * rw;
 
-        // xt = (xt > dh) ? dh : xt;
-        // xl = (xl > dw) ? dw : xl;
-
-        // Close if outside
-        if (xl < 0 || xt < 0 || xl > dw || xt > dh) {
-            this.hide();
-        }
-        else {
-            this.$zoom.css({
-                top:  '' + (Math.ceil(xt) * -1) + 'px',
-                left: '' + (Math.ceil(xl) * -1) + 'px'
-            });
-        }
-
+        this.$zoom.css({
+            top: '' + (Math.ceil(xt) * -1) + 'px',
+            left: '' + (Math.ceil(xl) * -1) + 'px'
+        });
     };
 
     /**
      * Hide
      */
-    EasyZoom.prototype.hide = function() {
+    EasyZoom.prototype.hide = function () {
         if (this.isOpen) {
             this.$flyout.detach();
             this.isOpen = false;
@@ -214,7 +220,7 @@
     /**
      * Teardown
      */
-    EasyZoom.prototype.teardown = function() {
+    EasyZoom.prototype.teardown = function () {
         this.hide();
 
         this.$target.removeClass('is-loading is-ready is-error').off('.easyzoom');
@@ -230,26 +236,26 @@
     };
 
     // jQuery plugin wrapper
-    $.fn.easyZoom = function( options ) {
-        return this.each(function() {
+    $.fn.easyZoom = function (options) {
+        return this.each(function () {
             var api = $.data(this, 'easyZoom');
 
-            if ( ! api) {
+            if (!api) {
                 $.data(this, 'easyZoom', new EasyZoom(this, options));
             }
-            else if ( api.isOpen === undefined ) {
+            else if (api.isOpen === undefined) {
                 api._init();
             }
         });
     };
 
     // AMD and CommonJS module compatibility
-    if ( typeof define === 'function' && define.amd ){
-        define(function() {
+    if (typeof define === 'function' && define.amd) {
+        define(function () {
             return EasyZoom;
         });
     }
-    else if ( typeof module !== 'undefined' && module.exports ) {
+    else if (typeof module !== 'undefined' && module.exports) {
         module.exports = EasyZoom;
     }
 
