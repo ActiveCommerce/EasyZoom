@@ -122,10 +122,10 @@
         rw = dw / w1;
         rh = dh / h1;
 
-        //initial position of the zooom image - important for smaller mobile screens
+        //initial position of the zooom image - important for mobile screens
         this.$zoom.css({
-            top: ((this.$zoom.height() / 2) + (h1 / 2)) * -1,
-            left: ((this.$zoom.width() / 2) + (w1 / 2)) * -1
+            top: ((this.$zoom.height() / 2) * -1) + (h1 / 2),
+            left: ((this.$zoom.width() / 2) * -1) + (w1 / 2)
         });
 
         this.isOpen = true;
